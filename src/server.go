@@ -9,19 +9,20 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"path/filepath"
+	"runtime"
 )
 
 //Message :- simple type for message callback
 type Message func(message string)
 
-var env = util.LoadEnvConfig()
+var env = util.EnvConfig()
 var path, _ = filepath.Abs("./store")
 
 var cacheConfig = &cache.Config{
-	Host: "localhost",
-	Port: "6379",
-	DB: 0,
-	Password: "",
+	Host:       "localhost",
+	Port:       "6379",
+	DB:         0,
+	Password:   "",
 	MaxRetries: 3,
 }
 
@@ -30,23 +31,18 @@ var dbConfig = &database.Config{
 	DatabaseName: env.DatabaseName,
 }
 
-
 //Start :- server start function
 func Start() {
 	go cacheConfig.Init()
+	go dbConfig.Init()
 	go router.Init()
-	err := dbConfig.Init()
 
-	if err != nil {
-		util.LogError("Database connection issue", err)
-		return
-	}else{
-		util.LogInfo("Database connected")
-	}
+	runServer()
+}
 
-
-	log.Println("Listing for requests at http://localhost:1000/")
+func runServer() {
+	util.LogInfo("Listing for requests at http://localhost:1000/")
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	go util.PrintMemUsageWithTimer()
 	log.Fatal(http.ListenAndServe(":1000", nil))
 }
-

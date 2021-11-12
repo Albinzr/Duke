@@ -3,21 +3,24 @@ package util
 import (
 	"flag"
 	"fmt"
+	"github.com/joho/godotenv"
 	"os"
 	"runtime"
 	"runtime/debug"
 	"time"
 
-	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 )
 
 //Config :- env struct
 type Config struct {
-	Port string
+	Port         string
 	MongoURL     string
 	DatabaseName string
+	SecretKey    []byte
 }
+
+var config *Config = nil
 
 //LogError :- common function for loging error
 func LogError(message string, errorData error) {
@@ -25,6 +28,10 @@ func LogError(message string, errorData error) {
 		log.Errorln("Error : ", message)
 		return
 	}
+}
+func LogErrorMsg(message string) {
+	log.Errorln("Error : ", message)
+	return
 }
 
 //LogInfo :- common func for loging info
@@ -42,31 +49,32 @@ func LogDebug(args ...interface{}) {
 	log.Debug(args)
 }
 
-//LoadEnvConfig :- for loading config files
-func LoadEnvConfig() *Config {
-	runtime.GOMAXPROCS(runtime.NumCPU())
+//EnvConfig :- for loading config files
+func EnvConfig() *Config {
+	if config == nil {
+		var err error
+		key := flag.String("env", "development", "")
+		flag.Parse()
+		LogInfo("env:", *key)
+		if *key == "production" {
+			log.SetFormatter(&log.TextFormatter{})
+			err = godotenv.Load("./production.env")
+		} else {
+			err = godotenv.Load("./local.env")
+			log.SetFormatter(&log.TextFormatter{})
+		}
 
-	var err error
+		if err != nil {
+			LogFatal("cannot load config file", err)
+		}
 
-	key := flag.String("env", "development", "")
-	flag.Parse()
-	LogInfo("env:", *key)
-	if *key == "production" {
-		log.SetFormatter(&log.TextFormatter{})
-		err = godotenv.Load("./production.env")
-	} else {
-		err = godotenv.Load("./local.env")
-		log.SetFormatter(&log.TextFormatter{})
+		config = new(Config)
+		config.Port = os.Getenv("PORT")
+		config.MongoURL = os.Getenv("MONGO_URL")
+		config.DatabaseName = os.Getenv("DATABASE_NAME")
+		config.SecretKey = []byte(os.Getenv("SECRET_KEY"))
 	}
 
-	if err != nil {
-		LogFatal("cannot load config file", err)
-	}
-
-	config := new(Config)
-	config.Port = os.Getenv("PORT")
-	config.MongoURL = os.Getenv("MONGO_URL")
-	config.DatabaseName = os.Getenv("DATABASE_NAME")
 	return config
 }
 
@@ -88,9 +96,21 @@ func PrintMemUsage() {
 func bToMb(b uint64) uint64 {
 	return b / 1024 / 1024
 }
-func PrintMemUsageWithTimer(){
+
+func PrintMemUsageWithTimer() {
 	for now := range time.Tick(time.Minute) {
 		fmt.Println(now)
 		PrintMemUsage()
 	}
+}
+
+func ErrorResponse(msg string, errorReason string, errorDetails error) []byte {
+	var str string
+	if errorDetails == nil {
+		str = `{"status":false,"error": {"reason": "` + errorReason + `","details": null},"msg":"` + msg + `"}`
+	} else {
+		str = `{"status":false,"error": {"reason": "` + errorReason + `","details": "` + errorDetails.Error() + `"},"msg":"` + msg + `"}`
+	}
+
+	return []byte(str)
 }

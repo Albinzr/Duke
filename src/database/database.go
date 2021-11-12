@@ -18,7 +18,7 @@ type Config struct {
 }
 
 //Init :- initalize function
-func (c *Config) Init() error {
+func (c *Config) Init() {
 	var err error
 	c.client, err = mongo.NewClient(options.Client().ApplyURI(c.URL))
 
@@ -29,7 +29,11 @@ func (c *Config) Init() error {
 	err = c.client.Connect(c.ctx)
 	util.LogError("databaseConnectionError", err)
 
-	return err
+	if err != nil {
+		util.LogError("Database connection issue", err)
+		return
+	} else {
+		util.LogInfo("Database connected")
+	}
+
 }
-
-
