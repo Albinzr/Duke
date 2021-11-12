@@ -4,7 +4,7 @@ import (
 	"duke/init/src/cache"
 	"duke/init/src/database"
 	util "duke/init/src/helpers"
-	"duke/init/src/router"
+	"duke/init/src/login"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -34,8 +34,8 @@ var dbConfig = &database.Config{
 //Start :- server start function
 func Start() {
 	go cacheConfig.Init()
-	go dbConfig.Init()
-	go router.Init()
+	//go dbConfig.Init()
+	go login.Init(dbConfig.URL, dbConfig.DatabaseName, "login")
 
 	runServer()
 }
@@ -43,6 +43,6 @@ func Start() {
 func runServer() {
 	util.LogInfo("Listing for requests at http://localhost:1000/")
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	go util.PrintMemUsageWithTimer()
+	//go util.PrintMemUsageWithTimer()
 	log.Fatal(http.ListenAndServe(":1000", nil))
 }

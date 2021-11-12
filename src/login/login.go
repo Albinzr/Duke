@@ -1,15 +1,25 @@
-package router
+package login
 
 import (
 	util "duke/init/src/helpers"
+	"duke/init/src/login/database"
 	"fmt"
 	jwt "github.com/dgrijalva/jwt-go"
+	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"time"
 )
 
-func Init() {
+var dbConfig database.LoginDBConfig
 
+func Init(url string, dbName string, collectionName string) {
+
+	dbConfig.URL = url
+	dbConfig.DatabaseName = dbName
+	dbConfig.CollectionName = collectionName
+	dbConfig.Init()
+
+	util.LogInfo("--------->")
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/signup", signUpHandler)
 	http.HandleFunc("/forgotPassword", forgotPasswordHandler)
@@ -23,19 +33,35 @@ var loginHandler = func(w http.ResponseWriter, req *http.Request) {
 }
 
 var signUpHandler = func(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	req.ParseForm()
 	username := req.Form.Get("username")
 	password := req.Form.Get("password")
 	emailId := req.Form.Get("emailId")
 
-	if len(username) > 4 && len(password) > 8 && len(emailId) > 5 {
+	if len(username) < 4 && len(password) < 8 && len(emailId) < 5 {
 		w.WriteHeader(http.StatusBadRequest)
-		resp := util.ErrorResponse("incomplet data recived", "param is not valid", nil)
+		resp := util.ErrorResponse("incomplete data", "param is not valid", nil)
 		w.Write(resp)
 		return
 	}
-	fmt.Println(username, password, emailId)
-	w.Header().Set("Content-Type", "application/json")
+
+	user := database.User{}
+	user.Username = username
+	user.EmailId = emailId
+	user.Password = getHash([]byte(password))
+	err := dbConfig.CreateUser(user)
+
+	if err != nil {
+		util.LogError("", err)
+		w.WriteHeader(http.StatusBadRequest)
+		resp := util.ErrorResponse("please try after sometime", "unable to create user in db", nil)
+		w.Write(resp)
+		return
+	}
+
+	util.LogInfo(user.Password)
+	user.Password = getHash([]byte(user.Password))
 	//TODO: - replace bellow 1 with userId from db
 	validToken, err := GetJWT(username, 1)
 	fmt.Println(validToken)
@@ -43,6 +69,7 @@ var signUpHandler = func(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		resp := util.ErrorResponse("please try after sometime", "Failed to generate token", err)
 		w.Write(resp)
+		return
 	}
 
 	w.Write([]byte(`{"token":` + string(validToken) + `}`))
@@ -134,4 +161,12 @@ func isAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handle
 			return
 		}
 	})
+}
+
+func getHash(pwd []byte) string {
+	hash, err := bcrypt.GenerateFromPassword(pwd, bcrypt.MinCost)
+	if err != nil {
+		util.LogError("could not creat hash", err)
+	}
+	return string(hash)
 }
