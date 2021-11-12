@@ -1,0 +1,56 @@
+version: "3.7"
+services:
+  # reader server to read all incoming beacon
+  yin:
+    build:
+      context: .
+      dockerfile: yin.dockerfile
+    container_name: yin-container
+    depends_on:
+      - redis
+    image: yin-image
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 300M
+    ports:
+      - "1000:1000"
+    expose:
+      - "1000"
+    restart: always
+    networks:
+      - yinyang-network
+
+  redis:
+    image: "bitnami/redis:latest"
+    container_name: redis-container
+    ports:
+      - "6379"
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    volumes:
+      - redis-storage:/bitnami'
+    networks:
+      - yinyang-network
+
+  zookeeper:
+    image: wurstmeister/zookeeper:3.4.6
+    expose:
+      - "2181"
+    restart: always
+    networks:
+      - yinyang-network
+    container_name: zookeeper-container
+    # logging:
+    #   driver: none
+
+# global network for entire system
+networks:
+  yinyang-network:
+    driver: bridge
+    name: yinyang-network
+
+# storage for yin server.
+volumes:
+  redis-storage:
+    name: redis-storage
