@@ -53,14 +53,14 @@ func (c *LoginDBConfig) CreateUser(user User) (primitive.ObjectID, error) {
 	return id, nil
 }
 
-func (c *LoginDBConfig) FindUser(username string, password string) (primitive.M, error) {
-	type Fields struct {
-		username string `bson:"username"`
-	}
+func (c *LoginDBConfig) FindUser(username string) (primitive.M, error) {
 	var result primitive.M
-	filter := bson.M{"username": username}
-	err := c.collection.FindOne(c.ctx, filter).Decode(&result)
 
+	filter := &bson.M{
+		"username": username,
+	}
+
+	err := c.collection.FindOne(c.ctx, filter).Decode(&result)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			util.LogError("no data found in db", err)
@@ -70,4 +70,21 @@ func (c *LoginDBConfig) FindUser(username string, password string) (primitive.M,
 		return nil, err
 	}
 	return result, nil
+}
+
+func (c *LoginDBConfig) IsUserValid(emailId string) bool {
+
+	var result primitive.M
+	filter := bson.M{"emailId": emailId}
+	err := c.collection.FindOne(c.ctx, filter).Decode(&result)
+
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			util.LogError("no data found in db", err)
+		} else if err != nil {
+			util.LogError("unable to get data from db", err)
+		}
+		return false
+	}
+	return true
 }

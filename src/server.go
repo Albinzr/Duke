@@ -36,9 +36,20 @@ var dbConfig = &database.Config{
 func Start() {
 	go cacheConfig.Init()
 	dbConfig.Init()
-	go login.Init(dbConfig.Database, "user", env.Aud, env.Iss)
+	loginConfig := &login.Config{
+		Database:               dbConfig.Database,
+		CollectionName:         "user",
+		Aud:                    env.Aud,
+		Iss:                    env.Iss,
+		ForgotPasswordCallback: resetPasswordEmail,
+	}
+	go loginConfig.Init()
 	go router.Init()
 	runServer()
+}
+
+func resetPasswordEmail(emailId string, url string) {
+
 }
 
 func runServer() {

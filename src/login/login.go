@@ -12,14 +12,21 @@ import (
 	"time"
 )
 
+type Config struct {
+	Database               *mongo.Database
+	CollectionName         string
+	Aud                    string
+	Iss                    string
+	ForgotPasswordCallback func(emailId string, url string)
+}
+
 var dbConfig database.LoginDBConfig
 
-func Init(database *mongo.Database, collectionName string, aud string, iss string) {
-
-	dbConfig.CollectionName = collectionName
-	dbConfig.Database = database
-	dbConfig.Iss = iss
-	dbConfig.Aud = aud
+func (c *Config) Init() {
+	dbConfig.CollectionName = c.CollectionName
+	dbConfig.Database = c.Database
+	dbConfig.Iss = c.Iss
+	dbConfig.Aud = c.Aud
 	dbConfig.Init()
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/signup", signUpHandler)
@@ -32,12 +39,21 @@ var loginHandler = func(w http.ResponseWriter, req *http.Request) {
 	req.ParseForm()
 	username := req.Form.Get("username")
 	password := req.Form.Get("password")
-	password = getHash([]byte(password))
-	userInfo, err := dbConfig.FindUser(username, password)
+	util.LogInfo(username, password)
+	userInfo, err := dbConfig.FindUser(username)
 
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		resp := util.ErrorResponse("invalid access", "login not valid", err)
+		w.Write(resp)
+		return
+	}
+
+	hashPassword := []byte(userInfo["password"].(string))
+
+	if !isPasswordValid(hashPassword, []byte(password)) {
+		w.WriteHeader(http.StatusUnauthorized)
+		resp := util.ErrorResponse("invalid access", "not matching", nil)
 		w.Write(resp)
 		return
 	}
@@ -106,7 +122,12 @@ var signUpHandler = func(w http.ResponseWriter, req *http.Request) {
 
 var forgotPasswordHandler = func(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"status":"signup"}`))
+	req.ParseForm()
+	emailId := req.Form.Get("emailId")
+	if dbConfig.IsUserValid(emailId) {
+		w.Write([]byte(""))
+		return
+	}
 }
 
 var resetPasswordHandler = func(w http.ResponseWriter, req *http.Request) {
@@ -139,4 +160,11 @@ func getHash(pwd []byte) string {
 		util.LogError("could not creat hash", err)
 	}
 	return string(hash)
+}
+
+func isPasswordValid(hash []byte, password []byte) bool {
+	if bcrypt.CompareHashAndPassword(hash, password) != nil {
+		return false
+	}
+	return true
 }
