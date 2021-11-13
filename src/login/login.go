@@ -4,7 +4,7 @@ import (
 	util "duke/init/src/helpers"
 	"duke/init/src/login/database"
 	"fmt"
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
@@ -36,7 +36,13 @@ func (c *Config) Init() {
 
 var loginHandler = func(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	req.ParseForm()
+	err := req.ParseForm()
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		resp := util.ErrorResponse("invalid param", "login not valid", err)
+		_, _ = w.Write(resp)
+		return
+	}
 	username := req.Form.Get("username")
 	password := req.Form.Get("password")
 	util.LogInfo(username, password)
@@ -45,7 +51,7 @@ var loginHandler = func(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		resp := util.ErrorResponse("invalid access", "login not valid", err)
-		w.Write(resp)
+		_, _ = w.Write(resp)
 		return
 	}
 
@@ -54,7 +60,7 @@ var loginHandler = func(w http.ResponseWriter, req *http.Request) {
 	if !isPasswordValid(hashPassword, []byte(password)) {
 		w.WriteHeader(http.StatusUnauthorized)
 		resp := util.ErrorResponse("invalid access", "not matching", nil)
-		w.Write(resp)
+		_, _ = w.Write(resp)
 		return
 	}
 
@@ -64,22 +70,27 @@ var loginHandler = func(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		resp := util.ErrorResponse("please try after sometime", "Failed to generate token", err)
-		w.Write(resp)
+		_, _ = w.Write(resp)
 		return
 	}
 
 	data := `{
 			"id":"` + objId.Hex() + `",
 			"username":"` + userInfo["username"].(string) + `",
-			"token":"` + string(validToken) + `"
+			"token":"` + validToken + `"
 			}`
 	resp := util.SuccessResponse(data)
-	w.Write(resp)
+	_, _ = w.Write(resp)
 }
 
 var signUpHandler = func(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	req.ParseForm()
+	err := req.ParseForm()
+	if err != nil {
+		resp := util.ErrorResponse("invalid param", "param is not valid", err)
+		_, _ = w.Write(resp)
+		return
+	}
 	username := req.Form.Get("username")
 	password := req.Form.Get("password")
 	emailId := req.Form.Get("emailId")
@@ -87,7 +98,7 @@ var signUpHandler = func(w http.ResponseWriter, req *http.Request) {
 	if len(username) < 4 && len(password) < 8 && len(emailId) < 5 {
 		w.WriteHeader(http.StatusBadRequest)
 		resp := util.ErrorResponse("incomplete data", "param is not valid", nil)
-		w.Write(resp)
+		_, _ = w.Write(resp)
 		return
 	}
 	user := database.User{}
@@ -100,7 +111,7 @@ var signUpHandler = func(w http.ResponseWriter, req *http.Request) {
 		util.LogError("", err)
 		w.WriteHeader(http.StatusBadRequest)
 		resp := util.ErrorResponse("please try after sometime", "unable to create user in db", err)
-		w.Write(resp)
+		_, _ = w.Write(resp)
 		return
 	}
 
@@ -112,27 +123,32 @@ var signUpHandler = func(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		resp := util.ErrorResponse("please try after sometime", "Failed to generate token", err)
-		w.Write(resp)
+		_, _ = w.Write(resp)
 		return
 	}
 	resp := util.SuccessResponse(`{"token":"` + string(validToken) + `"}`)
-	w.Write(resp)
+	_, _ = w.Write(resp)
 	return
 }
 
 var forgotPasswordHandler = func(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	req.ParseForm()
+	err := req.ParseForm()
+	if err != nil {
+		resp := util.ErrorResponse("invalid param", "param incorrect", err)
+		_, _ = w.Write(resp)
+		return
+	}
 	emailId := req.Form.Get("emailId")
 	if dbConfig.IsUserValid(emailId) {
-		w.Write([]byte(""))
+		_, _ = w.Write([]byte(""))
 		return
 	}
 }
 
 var resetPasswordHandler = func(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"status":"signup"}`))
+	_, _ = w.Write([]byte(`{"status":"signup"}`))
 }
 
 func GetJWT(username string, userId primitive.ObjectID) (string, error) {
