@@ -7,6 +7,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -18,6 +19,8 @@ type Config struct {
 	MongoURL     string
 	DatabaseName string
 	SecretKey    []byte
+	Aud          string
+	Iss          string
 }
 
 var config *Config = nil
@@ -73,6 +76,8 @@ func EnvConfig() *Config {
 		config.MongoURL = os.Getenv("MONGO_URL")
 		config.DatabaseName = os.Getenv("DATABASE_NAME")
 		config.SecretKey = []byte(os.Getenv("SECRET_KEY"))
+		config.Aud = os.Getenv("AUD")
+		config.Iss = os.Getenv("ISS")
 	}
 
 	return config
@@ -112,5 +117,11 @@ func ErrorResponse(msg string, errorReason string, errorDetails error) []byte {
 		str = `{"status":false,"error": {"reason": "` + errorReason + `","details": "` + errorDetails.Error() + `"},"msg":"` + msg + `"}`
 	}
 
+	return []byte(str)
+}
+
+func SuccessResponse(data string) []byte {
+
+	var str = `{"status":true,"data":` + strings.TrimSpace(data) + `,"error":null,"msg":" executed successfully"}`
 	return []byte(str)
 }

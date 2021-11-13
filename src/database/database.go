@@ -11,10 +11,10 @@ import (
 type Config struct {
 	URL          string
 	DatabaseName string
+	Database     *mongo.Database
 
-	client   *mongo.Client
-	database *mongo.Database
-	ctx      context.Context
+	client *mongo.Client
+	ctx    context.Context
 }
 
 //Init :- initalize function
@@ -23,7 +23,7 @@ func (c *Config) Init() {
 	c.client, err = mongo.NewClient(options.Client().ApplyURI(c.URL))
 
 	util.LogError("databaseClientError", err)
-	c.database = c.client.Database(c.DatabaseName)
+	c.Database = c.client.Database(c.DatabaseName)
 
 	c.ctx, _ = context.WithCancel(context.Background())
 	err = c.client.Connect(c.ctx)

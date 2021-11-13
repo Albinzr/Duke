@@ -5,6 +5,7 @@ import (
 	"duke/init/src/database"
 	util "duke/init/src/helpers"
 	"duke/init/src/login"
+	"duke/init/src/router"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -34,9 +35,9 @@ var dbConfig = &database.Config{
 //Start :- server start function
 func Start() {
 	go cacheConfig.Init()
-	//go dbConfig.Init()
-	go login.Init(dbConfig.URL, dbConfig.DatabaseName, "login")
-
+	dbConfig.Init()
+	go login.Init(dbConfig.Database, "user", env.Aud, env.Iss)
+	go router.Init()
 	runServer()
 }
 

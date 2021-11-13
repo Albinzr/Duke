@@ -3,19 +3,19 @@ package database
 import (
 	"context"
 	util "duke/init/src/helpers"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type LoginDBConfig struct {
-	URL            string
-	DatabaseName   string
+	Database       *mongo.Database
 	CollectionName string
-	//
-	client     *mongo.Client
-	database   *mongo.Database
-	collection *mongo.Collection
-	ctx        context.Context
+	Aud            string
+	Iss            string
+	collection     *mongo.Collection
+	ctx            context.Context
 }
 
 type User struct {
@@ -24,30 +24,50 @@ type User struct {
 	Password string `json "password" bson: "password"`
 }
 
-//Init :- initalize function
+//Init :- initialize function
 func (c *LoginDBConfig) Init() {
-	var err error
-	c.client, err = mongo.NewClient(options.Client().ApplyURI(c.URL))
-
-	util.LogError("databaseClientError", err)
-	c.database = c.client.Database(c.DatabaseName)
-	c.collection = c.database.Collection(c.CollectionName)
-	//var cancel context.CancelFunc
-	c.ctx, _ = context.WithCancel(context.Background())
-	err = c.client.Connect(c.ctx)
-	util.LogError("databaseConnectionError", err)
+	c.collection = c.Database.Collection(c.CollectionName)
+	indexName, err := c.collection.Indexes().CreateOne(
+		context.Background(),
+		mongo.IndexModel{
+			Keys:    bson.D{{Key: "username", Value: 1}},
+			Options: options.Index().SetUnique(true),
+		},
+	)
 
 	if err != nil {
-		util.LogError("Database connection issue", err)
+		util.LogError("unable to create indexes for db", err)
 		return
-	} else {
-		util.LogInfo("Database connected")
 	}
-	//defer cancel()
+	util.LogInfo("login module indexes created", indexName)
+
 }
 
-func (c *LoginDBConfig) CreateUser(user User) error {
+func (c *LoginDBConfig) CreateUser(user User) (primitive.ObjectID, error) {
 	result, err := c.collection.InsertOne(c.ctx, user)
-	util.LogInfo(result.InsertedID, err)
-	return err
+	if err != nil {
+		util.LogError("unable insert value to db", err)
+		return primitive.ObjectID{}, err
+	}
+	id := result.InsertedID.(primitive.ObjectID)
+	return id, nil
+}
+
+func (c *LoginDBConfig) FindUser(username string, password string) (primitive.M, error) {
+	type Fields struct {
+		username string `bson:"username"`
+	}
+	var result primitive.M
+	filter := bson.M{"username": username}
+	err := c.collection.FindOne(c.ctx, filter).Decode(&result)
+
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			util.LogError("no data found in db", err)
+		} else if err != nil {
+			util.LogError("unable to get data from db", err)
+		}
+		return nil, err
+	}
+	return result, nil
 }
