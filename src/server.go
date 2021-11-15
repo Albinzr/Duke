@@ -49,7 +49,7 @@ func Start() {
 }
 
 func resetPasswordEmail(emailId string, url string) {
-
+util.LogInfo(emailId,"----->",url)
 }
 
 func runServer() {

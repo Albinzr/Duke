@@ -19,9 +19,9 @@ type LoginDBConfig struct {
 }
 
 type User struct {
-	Username string `json" "username" bson: "username"`
-	EmailId  string `json "emailId" bson: "emailId"`
-	Password string `json "password" bson: "password"`
+	Username string `bson:"userName"`
+	EmailId  string `bson:"emailId"`
+	Password string `bson:"password"`
 }
 
 //Init :- initialize function
@@ -30,7 +30,7 @@ func (c *LoginDBConfig) Init() {
 	indexName, err := c.collection.Indexes().CreateOne(
 		context.Background(),
 		mongo.IndexModel{
-			Keys:    bson.D{{Key: "username", Value: 1}},
+			Keys:    bson.D{{Key: "username", Value: 1},{Key: "emailId", Value: 1}},
 			Options: options.Index().SetUnique(true),
 		},
 	)
@@ -84,6 +84,20 @@ func (c *LoginDBConfig) IsUserValid(emailId string) bool {
 		} else if err != nil {
 			util.LogError("unable to get data from db", err)
 		}
+		return false
+	}
+	return true
+}
+
+func (c *LoginDBConfig) UpdatePassword(emailId string, passwordhash string) bool{
+	_, err := c.collection.UpdateOne(
+		c.ctx,
+		bson.M{"emailId":emailId},
+		bson.D{
+			{"$set", bson.D{{"password", passwordhash}}},
+		})
+
+	if err != nil {
 		return false
 	}
 	return true

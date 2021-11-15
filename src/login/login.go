@@ -3,6 +3,7 @@ package login
 import (
 	util "duke/init/src/helpers"
 	"duke/init/src/login/database"
+	"errors"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -17,7 +18,7 @@ type Config struct {
 	CollectionName         string
 	Aud                    string
 	Iss                    string
-	ForgotPasswordCallback func(emailId string, url string)
+	ForgotPasswordCallback func(emailId string, token string)
 }
 
 var dbConfig database.LoginDBConfig
@@ -28,9 +29,10 @@ func (c *Config) Init() {
 	dbConfig.Iss = c.Iss
 	dbConfig.Aud = c.Aud
 	dbConfig.Init()
+
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/signup", signUpHandler)
-	http.HandleFunc("/forgotPassword", forgotPasswordHandler)
+	http.HandleFunc("/forgotPassword", c.forgotPasswordHandler)
 	http.HandleFunc("/resetPassword", resetPasswordHandler)
 }
 
@@ -131,7 +133,8 @@ var signUpHandler = func(w http.ResponseWriter, req *http.Request) {
 	return
 }
 
-var forgotPasswordHandler = func(w http.ResponseWriter, req *http.Request) {
+func (c *Config) forgotPasswordHandler (w http.ResponseWriter, req *http.Request) {
+
 	w.Header().Set("Content-Type", "application/json")
 	err := req.ParseForm()
 	if err != nil {
@@ -140,16 +143,80 @@ var forgotPasswordHandler = func(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	emailId := req.Form.Get("emailId")
+	util.LogInfo(emailId,"====>")
 	if dbConfig.IsUserValid(emailId) {
-		_, _ = w.Write([]byte(""))
+		token,err := resetToken(emailId)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			resp := util.ErrorResponse("please try after sometime", "Failed to generate token", err)
+			_, _ = w.Write(resp)
+		}
+
+		c.ForgotPasswordCallback(emailId,token)
+		resp := util.SuccessResponse("null")
+		_, _ = w.Write(resp)
+		return
+		return
+	}else{
+		resp := util.ErrorResponse("invalid emailId","emailId not found",nil)
+		_, _ = w.Write(resp)
 		return
 	}
+
 }
 
 var resetPasswordHandler = func(w http.ResponseWriter, req *http.Request) {
+	fmt.Print("in 1")
 	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write([]byte(`{"status":"signup"}`))
+		err := req.ParseForm()
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			resp := util.ErrorResponse("invalid param", "login not valid", err)
+			_, _ = w.Write(resp)
+			return
+		}
+		tokenString := req.Form.Get("token")
+		password := req.Form.Get("password")
+		if len(password) < 8{
+			w.WriteHeader(http.StatusUnauthorized)
+			resp := util.ErrorResponse("invalid password", "not a strong password", err)
+			_, _ = w.Write(resp)
+			return
+		}
+
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, errors.New("unexpected signing method")
+			}
+			return []byte(util.EnvConfig().SecretKey), nil
+		})
+
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			resp := util.ErrorResponse("invalid token", "token not valid", err)
+			_, _ = w.Write(resp)
+			return
+		}
+
+		claims, _ := token.Claims.(jwt.MapClaims)
+		emailId := claims["emailId"].(string)
+
+		if dbConfig.IsUserValid(emailId){
+			passwordHash := getHash([]byte(password))
+			if dbConfig.UpdatePassword(emailId,passwordHash){
+				resp := util.SuccessResponse(`{"response":"password successfully"}`)
+				_, _ = w.Write(resp)
+				return
+			}
+		}else{
+			w.WriteHeader(http.StatusUnauthorized)
+			resp := util.ErrorResponse("invalid emailId", "not a valid emailId", err)
+			_, _ = w.Write(resp)
+			return
+		}
 }
+
+///-------------------///
 
 func GetJWT(username string, userId primitive.ObjectID) (string, error) {
 	token := jwt.New(jwt.SigningMethodHS256)
@@ -169,6 +236,19 @@ func GetJWT(username string, userId primitive.ObjectID) (string, error) {
 
 	return tokenString, nil
 }
+
+func resetToken(emailId string) (string, error) {
+		token := jwt.New(jwt.SigningMethodHS256)
+		claims := token.Claims.(jwt.MapClaims)
+		claims["emailId"] = emailId
+		claims["exp"] = time.Now().Add(time.Hour * 24).Unix()
+		tokenString, err := token.SignedString(util.EnvConfig().SecretKey)
+		if err != nil {
+			util.LogError("Something Went Wrong:", err)
+			return "", err
+		}
+		return tokenString, nil
+	}
 
 func getHash(pwd []byte) string {
 	hash, err := bcrypt.GenerateFromPassword(pwd, bcrypt.MinCost)
