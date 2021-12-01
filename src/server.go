@@ -4,8 +4,10 @@ import (
 	"duke/init/src/cache"
 	"duke/init/src/database"
 	util "duke/init/src/helpers"
-	"duke/init/src/login"
+	"duke/init/src/product"
 	"duke/init/src/router"
+	"fmt"
+	login "github.com/Albinzr/duke_login_module"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -36,20 +38,28 @@ var dbConfig = &database.Config{
 func Start() {
 	go cacheConfig.Init()
 	dbConfig.Init()
+
 	loginConfig := &login.Config{
 		Database:               dbConfig.Database,
 		CollectionName:         "user",
 		Aud:                    env.Aud,
 		Iss:                    env.Iss,
 		ForgotPasswordCallback: resetPasswordEmail,
+		SecretKey:              env.SecretKey,
 	}
+	fmt.Println(env.SecretKey, "------->")
 	go loginConfig.Init()
+	productConfig := product.Config{
+		Database:       dbConfig.Database,
+		CollectionName: "product",
+	}
+	go productConfig.Init()
 	go router.Init()
 	runServer()
 }
 
 func resetPasswordEmail(emailId string, url string) {
-util.LogInfo(emailId,"----->",url)
+	util.LogInfo(emailId, "----->", url)
 }
 
 func runServer() {
