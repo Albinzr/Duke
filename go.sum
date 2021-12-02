@@ -27,6 +27,12 @@ github.com/Albinzr/duke_login_module v0.0.16 h1:v6vdsd6lvCBeBZSj22K+Bm3rlvxqyB+Q
 github.com/Albinzr/duke_login_module v0.0.16/go.mod h1:hpBCeqmXMCAjR9Y/pChtK6DjZ/Uq09y95z1JMW+XCp8=
 github.com/Albinzr/duke_login_module v0.0.17 h1:zUoA6DnOWEBB8nWFCs8mUL1S8e96+Zh9JHEAj4KPH9I=
 github.com/Albinzr/duke_login_module v0.0.17/go.mod h1:hpBCeqmXMCAjR9Y/pChtK6DjZ/Uq09y95z1JMW+XCp8=
+github.com/Albinzr/duke_product_module v0.0.1 h1:AsyufY+pB4/E4Tfdp6L3oOCsoVKCgahz1rK6ZNvZfMM=
+github.com/Albinzr/duke_product_module v0.0.1/go.mod h1:wMO3bnjQvQpPZ/qRkWW7Gw2jAsmfCy3EB7PzMKNZHfU=
+github.com/Albinzr/duke_product_module v0.0.3 h1:8ic7T6wJkIABO8Qo5XV+XswQLdKtEbC4S6fmU6IBgn8=
+github.com/Albinzr/duke_product_module v0.0.3/go.mod h1:wMO3bnjQvQpPZ/qRkWW7Gw2jAsmfCy3EB7PzMKNZHfU=
+github.com/Albinzr/duke_product_module v0.0.4 h1:W/tr/pADai0pRFr0qcgMEhpyi6qTfhMCvYeKCRYn7pI=
+github.com/Albinzr/duke_product_module v0.0.4/go.mod h1:wMO3bnjQvQpPZ/qRkWW7Gw2jAsmfCy3EB7PzMKNZHfU=
 github.com/cespare/xxhash/v2 v2.1.2 h1:YRXhKfTDauu4ajMg1TPgFO5jnlC2HCbmLXMcTG5cbYE=
 github.com/cespare/xxhash/v2 v2.1.2/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
