@@ -1,8 +1,10 @@
 package util
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	util "github.com/Albinzr/duke_login_module/helpers"
 	"github.com/joho/godotenv"
 	"os"
 	"runtime"
@@ -125,3 +127,13 @@ func SuccessResponse(data string) []byte {
 	var str = `{"status":true,"data":` + strings.TrimSpace(data) + `,"error":null,"msg":" executed successfully"}`
 	return []byte(str)
 }
+
+func SuccessResponseWithInterface(data interface{}) []byte {
+	byteArray, err := json.Marshal(data)
+	if err != nil{
+		util.LogError("unable to parse to json",err)
+		return []byte{}
+	}
+	return byteArray
+}
+
